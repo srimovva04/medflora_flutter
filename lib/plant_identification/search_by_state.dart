@@ -277,7 +277,7 @@ class _SearchByStatePageState extends State<SearchByStatePage> {
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 1.8 / 1.0,
+                childAspectRatio: 1.1,
                 crossAxisSpacing: 16.0,
                 mainAxisSpacing: 16.0,
               ),

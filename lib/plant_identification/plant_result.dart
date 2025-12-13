@@ -112,9 +112,6 @@ class _PlantResultPageState extends State<PlantResultPage> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// PLANT RESULT VIEW (Hybrid Layout)
-// -----------------------------------------------------------------------------
 class PlantResultView extends StatelessWidget {
   final Map<String, dynamic> plantData;
   final String imageUrl;
@@ -218,9 +215,6 @@ class PlantResultView extends StatelessWidget {
     );
   }
 
-  // ===========================================================================
-  // LAYOUT 2: NO IMAGE (Solid Green Header, Bottom-Left Text)
-  // ===========================================================================
   Widget _buildLayoutNoImage(BuildContext context) {
     final String commonName = plantData["Common Name"]?.toString() ?? "Unknown Plant";
     final String scientificName = plantData["Scientific Name"]?.toString() ?? "";

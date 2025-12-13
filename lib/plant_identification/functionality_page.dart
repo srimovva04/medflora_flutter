@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,8 @@ import 'package:medlife/plant_identification/search_by_name.dart';
 import 'plant_result.dart';
 import '../core/config.dart';
 import 'search_by_state.dart';
+import 'search_by_use.dart';
+
 
 
 class FunctionalityPage extends StatefulWidget {
@@ -277,119 +280,6 @@ class FunctionalityPageState extends State<FunctionalityPage> {
     );
   }
 
-  Widget _buildGoogleStyleSearchBar(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // --- 1. The Search Bar ---
-        Container(
-          margin: const EdgeInsets.only(top: 10),
-          // No decoration here to avoid double outlines
-          child: TextField(
-            readOnly: true, // Prevents keyboard from popping up immediately
-            onTap: () {
-              setState(() {
-                _isSearchExpanded = !_isSearchExpanded; // Toggle the dropdown
-              });
-            },
-            decoration: InputDecoration(
-              hintText: 'Search for plants...',
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
-
-              // Search Icon
-              prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor),
-
-              // Close/Chevron Icon Logic
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isSearchExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  color: Colors.grey,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _isSearchExpanded = !_isSearchExpanded;
-                  });
-                },
-              ),
-
-              // --- BORDER STYLING (Fixed Single Outline) ---
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-              ),
-            ),
-          ),
-        ),
-
-        // --- 2. The Dropdown Options (Visible only when expanded) ---
-        if (_isSearchExpanded)
-          Container(
-            margin: const EdgeInsets.only(top: 8, left: 10, right: 10, bottom: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.grey.shade200), // Subtle border
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Option 1
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
-                    child: Icon(Icons.grass, color: Theme.of(context).primaryColor, size: 20),
-                  ),
-                  title: const Text('Search by Name', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Find specific species', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  onTap: () {
-                    setState(() => _isSearchExpanded = false);
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByNamePage()));
-                  },
-                ),
-
-                Divider(height: 1, color: Colors.grey.shade100),
-
-                // Option 2
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
-                    child: Icon(Icons.map, color: Theme.of(context).primaryColor, size: 20),
-                  ),
-                  title: const Text('Search by State', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Explore regional flora', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  onTap: () {
-                    setState(() => _isSearchExpanded = false);
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByStatePage()));
-                  },
-                ),
-              ],
-            ),
-          ),
-
-        // Spacer to keep layout nice if dropdown is closed
-        if (!_isSearchExpanded) const SizedBox(height: 20),
-      ],
-    );
-  }
-
 
   Widget _buildSearchBar(BuildContext context) {
     return Column(
@@ -427,7 +317,7 @@ class FunctionalityPageState extends State<FunctionalityPage> {
                 },
               ),
 
-              // --- Border Styling (Fixed Single Outline) ---
+              // --- Border Styling ---
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
@@ -489,6 +379,23 @@ class FunctionalityPageState extends State<FunctionalityPage> {
                   onTap: () {
                     setState(() => _isSearchExpanded = false);
                     Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByStatePage()));
+                  },
+                ),
+
+                Divider(height: 1, color: Colors.grey.shade100),
+
+                // Option C: Search by Use (NEW)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+                    // Used 'healing' icon as it fits medicinal uses perfectly
+                    child: Icon(Icons.healing, color: Theme.of(context).primaryColor, size: 20),
+                  ),
+                  title: const Text('Search by Use', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    setState(() => _isSearchExpanded = false);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByUsePage()));
                   },
                 ),
               ],
@@ -625,16 +532,18 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 
 
 
-/// Without search
+
+/// 2 search options
 // import 'package:flutter/material.dart';
 // import 'package:image_picker/image_picker.dart';
 // import 'package:http/http.dart' as http;
 // import 'dart:convert';
 // import 'package:geolocator/geolocator.dart';
-//
+// import 'package:medlife/plant_identification/search_by_name.dart';
 // import 'plant_result.dart';
 // import '../core/config.dart';
-// import '../specialist/add_plant_screen.dart'; // Ensure this path is correct if used elsewhere
+// import 'search_by_state.dart';
+//
 //
 // class FunctionalityPage extends StatefulWidget {
 //   const FunctionalityPage({super.key});
@@ -648,11 +557,14 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //   final String cloudinaryUrl = "https://api.cloudinary.com/v1_1/dyi7dglot/image/upload";
 //   final String uploadPreset = "medleaf_preset";
 //   final String apiUrl = Config.apiUrl;
+//   bool _isSearchExpanded = false;
 //
-//   // State variable to manage the loading indicator
+//   // State variables
 //   bool _isLoading = false;
+//   // New state variable to show the search bar when the user taps the search icon
+//   bool _isSearching = false;
 //
-//   /// --- Core Logic for Image Processing ---
+//   /// --- Core Logic for Image Processing (Omitted for brevity, unchanged) ---
 //   Future<void> _pickImage(ImageSource source) async {
 //     // Prevent user from starting a new process if one is already running
 //     if (_isLoading) return;
@@ -674,7 +586,6 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //       _isLoading = true;
 //     });
 //
-//     // ✨ 1. Show a loading indicator
 //     showDialog(
 //       context: context,
 //       barrierDismissible: false, // User cannot dismiss the dialog by tapping outside
@@ -746,8 +657,9 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //     }
 //   }
 //
-//   /// --- Helper Functions (Unchanged) ---
+//   /// --- Helper Functions (Omitted for brevity, unchanged) ---
 //   Future<String?> _uploadToCloudinary(XFile pickedFile) async {
+//     // ... (unchanged)
 //     try {
 //       final bytes = await pickedFile.readAsBytes();
 //       var request = http.MultipartRequest("POST", Uri.parse(cloudinaryUrl))
@@ -776,6 +688,7 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //   }
 //
 //   Future<Map<String, dynamic>?> _fetchPlantData(String imageUrl, {Position? location}) async {
+//     // ... (unchanged)
 //     try {
 //       final body = <String, dynamic>{
 //         'image_url': imageUrl,
@@ -809,6 +722,7 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //   }
 //
 //   Future<Position?> _getCurrentLocation() async {
+//     // ... (unchanged)
 //     bool serviceEnabled;
 //     LocationPermission permission;
 //
@@ -899,19 +813,247 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //     );
 //   }
 //
+//   Widget _buildGoogleStyleSearchBar(BuildContext context) {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         // --- 1. The Search Bar ---
+//         Container(
+//           margin: const EdgeInsets.only(top: 10),
+//           // No decoration here to avoid double outlines
+//           child: TextField(
+//             readOnly: true, // Prevents keyboard from popping up immediately
+//             onTap: () {
+//               setState(() {
+//                 _isSearchExpanded = !_isSearchExpanded; // Toggle the dropdown
+//               });
+//             },
+//             decoration: InputDecoration(
+//               hintText: 'Search for plants...',
+//               filled: true,
+//               fillColor: Colors.white,
+//               contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
+//
+//               // Search Icon
+//               prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor),
+//
+//               // Close/Chevron Icon Logic
+//               suffixIcon: IconButton(
+//                 icon: Icon(
+//                   _isSearchExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+//                   color: Colors.grey,
+//                 ),
+//                 onPressed: () {
+//                   setState(() {
+//                     _isSearchExpanded = !_isSearchExpanded;
+//                   });
+//                 },
+//               ),
+//
+//               // --- BORDER STYLING (Fixed Single Outline) ---
+//               border: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(30),
+//                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+//               ),
+//               enabledBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(30),
+//                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+//               ),
+//               focusedBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(30),
+//                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+//               ),
+//             ),
+//           ),
+//         ),
+//
+//         // --- 2. The Dropdown Options (Visible only when expanded) ---
+//         if (_isSearchExpanded)
+//           Container(
+//             margin: const EdgeInsets.only(top: 8, left: 10, right: 10, bottom: 20),
+//             decoration: BoxDecoration(
+//               color: Colors.white,
+//               borderRadius: BorderRadius.circular(15),
+//               border: Border.all(color: Colors.grey.shade200), // Subtle border
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(0.1),
+//                   blurRadius: 10,
+//                   offset: const Offset(0, 5),
+//                 ),
+//               ],
+//             ),
+//             child: Column(
+//               children: [
+//                 // Option 1
+//                 ListTile(
+//                   leading: Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+//                     child: Icon(Icons.grass, color: Theme.of(context).primaryColor, size: 20),
+//                   ),
+//                   title: const Text('Search by Name', style: TextStyle(fontWeight: FontWeight.bold)),
+//                   subtitle: const Text('Find specific species', style: TextStyle(fontSize: 12, color: Colors.grey)),
+//                   onTap: () {
+//                     setState(() => _isSearchExpanded = false);
+//                     Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByNamePage()));
+//                   },
+//                 ),
+//
+//                 Divider(height: 1, color: Colors.grey.shade100),
+//
+//                 // Option 2
+//                 ListTile(
+//                   leading: Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+//                     child: Icon(Icons.map, color: Theme.of(context).primaryColor, size: 20),
+//                   ),
+//                   title: const Text('Search by State', style: TextStyle(fontWeight: FontWeight.bold)),
+//                   subtitle: const Text('Explore regional flora', style: TextStyle(fontSize: 12, color: Colors.grey)),
+//                   onTap: () {
+//                     setState(() => _isSearchExpanded = false);
+//                     Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByStatePage()));
+//                   },
+//                 ),
+//               ],
+//             ),
+//           ),
+//
+//         // Spacer to keep layout nice if dropdown is closed
+//         if (!_isSearchExpanded) const SizedBox(height: 20),
+//       ],
+//     );
+//   }
+//
+//
+//   Widget _buildSearchBar(BuildContext context) {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         // --- 1. The Search Bar ---
+//         Container(
+//           margin: const EdgeInsets.only(top: 10),
+//           child: TextField(
+//             readOnly: true, // Prevents keyboard from popping up immediately
+//             onTap: () {
+//               setState(() {
+//                 _isSearchExpanded = !_isSearchExpanded; // Toggle the dropdown
+//               });
+//             },
+//             decoration: InputDecoration(
+//               hintText: 'Search for plants...',
+//               filled: true,
+//               fillColor: Colors.white,
+//               contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
+//
+//               // Search Icon
+//               prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor),
+//
+//               // Arrow Icon (Rotates based on state)
+//               suffixIcon: IconButton(
+//                 icon: Icon(
+//                   _isSearchExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+//                   color: Colors.grey,
+//                 ),
+//                 onPressed: () {
+//                   setState(() {
+//                     _isSearchExpanded = !_isSearchExpanded;
+//                   });
+//                 },
+//               ),
+//
+//               // --- Border Styling (Fixed Single Outline) ---
+//               border: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(30),
+//                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+//               ),
+//               enabledBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(30),
+//                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+//               ),
+//               focusedBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(30),
+//                 borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+//               ),
+//             ),
+//           ),
+//         ),
+//
+//         // --- 2. The Dropdown Options (Visible only when expanded) ---
+//         if (_isSearchExpanded)
+//           Container(
+//             margin: const EdgeInsets.only(top: 8, left: 10, right: 10, bottom: 20),
+//             decoration: BoxDecoration(
+//               color: Colors.white,
+//               borderRadius: BorderRadius.circular(15),
+//               border: Border.all(color: Colors.grey.shade200),
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(0.1),
+//                   blurRadius: 10,
+//                   offset: const Offset(0, 5),
+//                 ),
+//               ],
+//             ),
+//             child: Column(
+//               children: [
+//                 // Option A: Search by Name
+//                 ListTile(
+//                   leading: Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+//                     child: Icon(Icons.grass, color: Theme.of(context).primaryColor, size: 20),
+//                   ),
+//                   title: const Text('Search by Name', style: TextStyle(fontWeight: FontWeight.bold)),
+//                   onTap: () {
+//                     setState(() => _isSearchExpanded = false);
+//                     Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByNamePage()));
+//                   },
+//                 ),
+//
+//                 Divider(height: 1, color: Colors.grey.shade100),
+//
+//                 // Option B: Search by State
+//                 ListTile(
+//                   leading: Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+//                     child: Icon(Icons.map, color: Theme.of(context).primaryColor, size: 20),
+//                   ),
+//                   title: const Text('Search by State', style: TextStyle(fontWeight: FontWeight.bold)),
+//                   onTap: () {
+//                     setState(() => _isSearchExpanded = false);
+//                     Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchByStatePage()));
+//                   },
+//                 ),
+//               ],
+//             ),
+//           ),
+//
+//         // Spacer to keep layout nice if dropdown is closed
+//         if (!_isSearchExpanded) const SizedBox(height: 20),
+//       ],
+//     );
+//   }
+//
+//
 //   /// --- UI Build Method (Updated) ---
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
 //       appBar: AppBar(
-//         title: const Text('Select Plant'),
+//         title: const Text('MedFlora'),
 //         centerTitle: true,
 //       ),
 //       body: Padding(
-//         padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 32.0),
+//         padding: const EdgeInsets.fromLTRB(24.0, 0.0, 24.0, 32.0),
 //         child: Column(
 //           crossAxisAlignment: CrossAxisAlignment.stretch,
 //           children: [
+//             // Insert the Search Bar here
+//             _buildSearchBar(context),
+//
 //             Expanded(
 //               child: Column(
 //                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -962,7 +1104,6 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //                 ],
 //               ),
 //             ),
-//             // ✨ The "Continue" button has been removed from here.
 //           ],
 //         ),
 //       ),
@@ -1016,8 +1157,8 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 //     );
 //   }
 // }
-//
-//
+
+
 
 
 /// MODEL USED
