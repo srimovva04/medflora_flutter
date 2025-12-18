@@ -23,7 +23,9 @@ class FunctionalityPageState extends State<FunctionalityPage> {
   final picker = ImagePicker();
   final String cloudinaryUrl = "https://api.cloudinary.com/v1_1/dyi7dglot/image/upload";
   final String uploadPreset = "medleaf_preset";
-  final String apiUrl = Config.apiUrl;
+  // final String apiUrl = Config.apiUrl;
+  final String apiUrl = '${Config.apiUrl}/predict';
+
   bool _isSearchExpanded = false;
 
   // State variables

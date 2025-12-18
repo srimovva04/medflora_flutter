@@ -1,7 +1,8 @@
-/// ACTUAL AUTH CODE
+// /// ACTUAL AUTH CODE
 // import 'package:flutter/material.dart';
-// import 'auth_screen.dart';
-// import 'functionality_page.dart';
+//
+// import '../auth/auth_screen.dart';
+// import '../plant_identification/functionality_page.dart';
 //
 // class RoleSelectionPage extends StatelessWidget {
 //   const RoleSelectionPage({super.key});
@@ -100,7 +101,7 @@
 //     );
 //   }
 // }
-
+//
 
 
 

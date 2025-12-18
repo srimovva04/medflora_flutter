@@ -154,12 +154,16 @@ class AuthProvider with ChangeNotifier {
           _userRole = responseData['role'];
 
           // Decode JWT to get user ID if needed (optional)
-          final parts = _token!.split('.');
-          if (parts.length == 3) {
-            final payload = json.decode(
-              utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-            );
-            _userId = payload['sub']['id'];
+          // final parts = _token!.split('.');
+          // if (parts.length == 3) {
+          //   final payload = json.decode(
+          //     utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+          //   );
+          //   _userId = payload['sub']['id'];
+          // }
+
+          if (responseData['userId'] != null) {
+            _userId = responseData['userId'];
           }
 
           // --- CHANGE: Removed SharedPreferences to disable auto-login ---
