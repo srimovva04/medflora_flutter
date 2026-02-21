@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/config.dart';
+import '../core/role_page.dart';
+import '../plant_identification/functionality_page.dart';
+import '../specialist/specialist_dashboard_page.dart';
+import '../specialist/specialist_page.dart';
+import 'curator_registration.dart';
 import 'providers/auth_provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 
 enum AuthMode { signup, login }
 enum UserRole { admin, curator }
@@ -17,6 +26,11 @@ class _AuthScreenState extends State<AuthScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey();
   AuthMode _authMode = AuthMode.login;
   final Map<String, String> _authData = {'email': '', 'password': ''};
+  String _phone = '';
+  String _otp = '';
+  bool _otpSent = false;
+  bool _otpVerified = false;
+  bool _isSendingOtp = false;
   var _isLoading = false;
   final _passwordController = TextEditingController();
 
@@ -42,27 +56,140 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
+
+
+  Future<void> _sendOtp() async {
+    setState(() => _isSendingOtp = true);
+
+    final response = await http.post(
+      Uri.parse('${Config.apiUrl}/send-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone': _phone}),
+    );
+
+    setState(() => _isSendingOtp = false);
+
+    if (response.statusCode == 200) {
+      setState(() => _otpSent = true);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('OTP sent')));
+    } else {
+      _showErrorDialog('Failed to send OTP');
     }
+  }
+
+  Future<void> _verifyOtp() async {
+    final response = await http.post(
+      Uri.parse('${Config.apiUrl}/verify-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': _phone,
+        'otp': _otp,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _otpVerified = true;
+      });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('OTP verified')));
+    } else {
+      _showErrorDialog('Invalid or expired OTP');
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_authMode == AuthMode.signup) {
+      if (!_formKey.currentState!.validate()) {
+        return;
+      }
+    }
+
     _formKey.currentState!.save();
     setState(() => _isLoading = true);
 
     try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // ================= LOGIN =================
       if (_authMode == AuthMode.login) {
-        await Provider.of<AuthProvider>(context, listen: false).login(
-            _authData['email']!, _authData['password']!);
-      } else {
-        await Provider.of<AuthProvider>(context, listen: false).signup(
-            _authData['email']!, _authData['password']!, getRoleString());
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Signup successful! Please log in.')),
+        bool success = await authProvider.login(
+          _authData['email']!,
+          _authData['password']!,
         );
-        setState(() => _authMode = AuthMode.login);
+
+        if (!success) {
+          _showErrorDialog("Login failed. Please check your credentials.");
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // // Role-based navigation
+        // if (authProvider.userRole == 'curator') {
+        //   Navigator.of(context).pushReplacement(
+        //     // MaterialPageRoute(builder: (_) => const SpecialistPage()),
+        //     MaterialPageRoute(builder: (_) => const SpecialistDashboardPage()),
+        //   );
+        // }
+        // Inside _submit() under the LOGIN section
+        if (authProvider.userRole == 'curator') {
+          // Check if they've already filled out their professional details
+          // You might need to add a 'isProfileComplete' boolean to your AuthProvider
+          if (authProvider.isProfileComplete) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const SpecialistDashboardPage()),
+            );
+          } else {
+            // REDIRECT TO PROFESSIONAL REGISTRATION FORM
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const CuratorRegistrationScreen()),
+            );
+          }
+        } else if (authProvider.userRole == 'user') {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const FunctionalityPage()),
+          );
+        } else {
+          _showErrorDialog("Unknown user role: ${authProvider.userRole}");
+        }
+
+        // ================= SIGNUP =================
+      } else {
+        // 🔒 BLOCK signup unless OTP is verified
+        if (!_otpVerified) {
+          _showErrorDialog("Please verify your phone number first");
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        final error = await authProvider.signup(
+          _authData['email']!,
+          _authData['password']!,
+          _phone, // ✅ verified phone
+        );
+
+        if (error == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Signup successful! Please log in.'),
+            ),
+          );
+
+          // Reset OTP state for safety
+          setState(() {
+            _authMode = AuthMode.login;
+            _otpSent = false;
+            _otpVerified = false;
+            _otp = '';
+            _phone = '';
+          });
+        } else {
+          _showErrorDialog(error);
+        }
       }
     } catch (error) {
-      _showErrorDialog(error.toString());
+      _showErrorDialog("An unexpected error occurred: $error");
     }
 
     if (mounted) {
@@ -87,40 +214,20 @@ class _AuthScreenState extends State<AuthScreen> {
       borderSide: BorderSide(color: Colors.grey.shade300),
     );
 
-    return Scaffold(
-      // Add an AppBar for easy navigation back to role selection
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(color: primaryColor), // Ensure back arrow is visible
-      ),
-      // Use the light green background theme
-      backgroundColor: Colors.green.shade50,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 4,
-            shadowColor: Colors.green.shade100,
-            margin: const EdgeInsets.all(20),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+      return Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  // mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Icon(Icons.eco_outlined, size: 48, color: primaryColor),
-                    const SizedBox(height: 16),
-                    Text(
-                      '${getRoleString().toUpperCase()} ${_authMode == AuthMode.login ? 'Login' : 'Sign Up'}',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                    ),
                     const SizedBox(height: 24),
+
                     TextFormField(
                       decoration: InputDecoration(
                         labelText: 'E-Mail',
@@ -137,9 +244,78 @@ class _AuthScreenState extends State<AuthScreen> {
                         }
                         return null;
                       },
-                      onSaved: (value) => _authData['email'] = value!,
+                      onChanged: (value) {
+                        _authData['email'] = value.trim();   // ✅ FIX
+                      },
+                      onSaved: (value) {
+                        _authData['email'] = value!.trim();  // ✅ KEEP
+                      },
                     ),
-                    const SizedBox(height: 16),
+
+                    const SizedBox(height: 10),
+                  if (_authMode == AuthMode.signup)
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        prefixIcon: Icon(Icons.phone, color: primaryColor),
+                        border: inputBorderStyle,
+                        focusedBorder: inputBorderStyle.copyWith(
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.trim().length < 10) {
+                          return 'Enter valid phone number';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          _phone = value.trim();
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    if (_authMode == AuthMode.signup && !_otpSent)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _phone.length < 10 || _isSendingOtp
+                              ? null
+                              : _sendOtp,
+                          child: _isSendingOtp
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text('Send OTP'),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+
+                    if (_authMode == AuthMode.signup && _otpSent && !_otpVerified)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: 'Enter OTP',
+                          ),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            setState(() {
+                              _otp = value.trim();
+                            });
+                          },
+                        ),
+                      ),
+                    if (_authMode == AuthMode.signup && _otpSent && !_otpVerified)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _otp.length < 6 ? null : _verifyOtp,
+                          child: const Text('Verify OTP'),
+                        ),
+                      ),
                     TextFormField(
                       decoration: InputDecoration(
                         labelText: 'Password',
@@ -159,29 +335,27 @@ class _AuthScreenState extends State<AuthScreen> {
                       },
                       onSaved: (value) => _authData['password'] = value!,
                     ),
+                    const SizedBox(height: 10),
                     if (_authMode == AuthMode.signup)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: TextFormField(
-                          enabled: _authMode == AuthMode.signup,
-                          decoration: InputDecoration(
-                            labelText: 'Confirm Password',
-                            prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
-                            border: inputBorderStyle,
-                            focusedBorder: inputBorderStyle.copyWith(
-                              borderSide: BorderSide(color: primaryColor, width: 2),
-                            ),
+                      TextFormField(
+                        enabled: _authMode == AuthMode.signup,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
+                          border: inputBorderStyle,
+                          focusedBorder: inputBorderStyle.copyWith(
+                            borderSide: BorderSide(color: primaryColor, width: 2),
                           ),
-                          obscureText: true,
-                          validator: (value) {
-                            if (value != _passwordController.text) {
-                              return 'Passwords do not match!';
-                            }
-                            return null;
-                          },
                         ),
+                        obscureText: true,
+                        validator: (value) {
+                          if (value != _passwordController.text) {
+                            return 'Passwords do not match!';
+                          }
+                          return null;
+                        },
                       ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 16),
                     if (_isLoading)
                       const CircularProgressIndicator()
                     else
@@ -195,7 +369,11 @@ class _AuthScreenState extends State<AuthScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             elevation: 4,
                           ),
-                          onPressed: _submit,
+                          // onPressed: _submit,
+                          onPressed: (_authMode == AuthMode.signup && !_otpVerified)
+                              ? null
+                              : _submit,
+
                           child: Text(
                             _authMode == AuthMode.login ? 'LOGIN' : 'SIGN UP',
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
@@ -213,12 +391,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
+      );
   }
+
 }
 
 

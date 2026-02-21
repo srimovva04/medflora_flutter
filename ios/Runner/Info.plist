@@ -26,6 +26,12 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>Location used to tag plant photos</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Photo access required</string>
+
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

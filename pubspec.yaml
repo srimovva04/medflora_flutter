@@ -50,7 +50,14 @@ dependencies:
   provider: ^6.1.5+1
   polylabel: ^1.0.1
   geolocator: ^14.0.2
-
+  url_launcher: ^6.3.2
+  geocoding: ^4.0.0
+  exif: ^3.3.0
+  path_provider: ^2.1.5
+  photo_manager: ^3.8.3
+  photo_manager_image_provider: ^2.2.0
+  permission_handler: ^12.0.1
+  file_picker: ^10.3.10
 
 dev_dependencies:
   flutter_test:
@@ -87,7 +94,7 @@ flutter:
     - assets/plants.json
     - assets/logo.png
     - assets/
-
+    - assets/plants/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

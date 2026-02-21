@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'availability_map.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class PlantDetailsPage extends StatelessWidget {
   final Map<String, dynamic> plantData;
@@ -184,10 +186,17 @@ class PlantDetailsPage extends StatelessWidget {
                     backgroundColor: cardBackgroundColor,
                   ),
                   const SizedBox(height: 24),
-                  _buildDescriptionCard(
+                  // _buildDescriptionCard(
+                  //   context: context,
+                  //   title: 'About This Plant',
+                  //   description: description,
+                  // ),
+                  const SizedBox(height: 24), // Spacing
+
+                  // --- NEW LINK SECTION ---
+                  _buildReferenceLink(
                     context: context,
-                    title: 'About This Plant',
-                    description: description,
+                    scientificName: scientificName,
                   ),
                 ],
               ),
@@ -320,6 +329,46 @@ class PlantDetailsPage extends StatelessWidget {
       ),
     );
   }
+
+
+  // --- Simplified Link Widget ---
+
+  Widget _buildReferenceLink({
+    required BuildContext context,
+    required String scientificName,
+  }) {
+    // Dynamic URL based on scientific name
+    final String url = 'https://cb.imsc.res.in/imppat/therapeutics/${Uri.encodeComponent(scientificName)}';
+
+    return Center(
+      child: TextButton.icon(
+        onPressed: () => _launchURL(url),
+        icon: const Icon(Icons.open_in_new, size: 18),
+        label: Text(
+          'View on IMPPAT Database',
+          style: TextStyle(
+            color: Theme.of(context).primaryColor,
+            fontWeight: FontWeight.w600,
+            decoration: TextDecoration.underline, // Optional: makes it look more like a link
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper to open the link (Requires url_launcher package)
+  Future<void> _launchURL(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        throw 'Could not launch $url';
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
+  }
+
+
 
   Widget _buildInfoRow({
     required IconData icon,
@@ -684,6 +733,8 @@ class PlantDetailsPage extends StatelessWidget {
     );
   }
 }
+
+
 
 /// Excel code
 // import 'package:flutter/material.dart';

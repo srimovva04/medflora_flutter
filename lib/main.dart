@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'core/role_page.dart';
+import 'auth/providers/auth_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,14 +12,39 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MedFlora',
-      theme: _buildAppTheme(), // Apply the custom theme
-      debugShowCheckedModeBanner: false,
-      home: const RoleSelectionPage(),
+    return ChangeNotifierProvider(
+      create: (_) {
+        final auth = AuthProvider();
+        auth.tryAutoLogin();   // ✅ call here
+        return auth;
+      },
+      child: MaterialApp(
+        title: 'MedFlora',
+        theme: _buildAppTheme(),
+        debugShowCheckedModeBanner: false,
+        home: const RoleSelectionPage(),
+      ),
     );
   }
 }
+
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return ChangeNotifierProvider(
+//       create: (context) => AuthProvider(),
+//       child: MaterialApp(
+//         title: 'MedFlora',
+//         theme: _buildAppTheme(), // Apply the custom theme
+//         debugShowCheckedModeBanner: false,
+//         home: const RoleSelectionPage(),
+//       ),
+//     );
+//   }
+// }
 
 // --- CENTRAL THEME DEFINITION ---
 ThemeData _buildAppTheme() {

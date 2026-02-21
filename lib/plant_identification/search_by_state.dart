@@ -150,16 +150,16 @@ class _SearchByStatePageState extends State<SearchByStatePage> {
                           child: Icon(
                             Icons.location_on_outlined,
                             color: primary,
-                            size: 26,
+                            size: 20,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Text(
                           name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 16.5,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
