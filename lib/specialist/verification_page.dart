@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
+import '../auth/providers/auth_provider.dart';
 import '../core/config.dart';
 import 'verification_details.dart';
 
@@ -22,22 +24,85 @@ class _VerificationListPageState extends State<VerificationListPage> {
     _fetchSubmissions();
   }
 
-  // --- API CALL: FETCH ALL PREDICTION HISTORY ---
+  /// Fetches only the unverified submissions from the backend.
+  /// The backend now filters out items where 'is_verified' is true.
+  // Future<void> _fetchSubmissions() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //     _error = null;
+  //   });
+  //
+  //   try {
+  //     final url = Uri.parse('${Config.apiUrl}/admin/all-submissions');
+  //     final response = await http.get(url);
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = jsonDecode(response.body);
+  //       setState(() {
+  //         _submissions = responseData['data'] ?? [];
+  //         _isLoading = false;
+  //       });
+  //     } else {
+  //       setState(() {
+  //         _error = "Server Error: ${response.statusCode}";
+  //         _isLoading = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       _error = "Connection failed. Check backend status.";
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
   Future<void> _fetchSubmissions() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final String role = authProvider.userRole ?? 'user';
+
     try {
-      final url = Uri.parse('${Config.apiUrl}/admin/all-submissions');
+      final url = Uri.parse('${Config.apiUrl}/admin/all-submissions?role=$role');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
+        List<dynamic> fetchedList = responseData['data'] ?? [];
+
+        // --- SORTING LOGIC START ---
+        fetchedList.sort((a, b) {
+          int getPriority(Map<String, dynamic> item) {
+            final String status = item['status'] ?? 'pending';
+            final String uploaderRole = item['uploader_role'] ?? 'unknown';
+
+            // Priority 1: Regular Curator has reviewed it and it's waiting for Senior approval
+            if (status == 'pending_senior_review') {
+              return 1;
+            }
+            // Priority 3: Uploaded by another Senior Curator (Lowest Priority)
+            else if (uploaderRole == 'senior_curator') {
+              return 3;
+            }
+            // Priority 2: Brand new AI Predictions or regular Manual Uploads
+            else {
+              return 2;
+            }
+          }
+
+          int priorityA = getPriority(a);
+          int priorityB = getPriority(b);
+
+          // Compare priorities (1 comes before 2, 2 comes before 3)
+          return priorityA.compareTo(priorityB);
+        });
+        // --- SORTING LOGIC END ---
+
         setState(() {
-          // Extracts the 'data' list from your backend JSON response
-          _submissions = responseData['data'] ?? [];
+          _submissions = fetchedList;
           _isLoading = false;
         });
       } else {
@@ -48,9 +113,54 @@ class _VerificationListPageState extends State<VerificationListPage> {
       }
     } catch (e) {
       setState(() {
-        _error = "Connection failed. Check if backend is running at ${Config.apiUrl}";
+        _error = "Connection failed. Check backend status.";
         _isLoading = false;
       });
+    }
+  }
+  ///works
+  // Future<void> _fetchSubmissions() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //     _error = null;
+  //   });
+  //
+  //   // 1. Get the AuthProvider to find out who is logged in
+  //   final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  //   final String role = authProvider.userRole ?? 'user';
+  //
+  //   try {
+  //     // 2. Pass the role to the backend in the URL
+  //     final url = Uri.parse('${Config.apiUrl}/admin/all-submissions?role=$role');
+  //     final response = await http.get(url);
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = jsonDecode(response.body);
+  //       setState(() {
+  //         _submissions = responseData['data'] ?? [];
+  //         _isLoading = false;
+  //       });
+  //     } else {
+  //       setState(() {
+  //         _error = "Server Error: ${response.statusCode}";
+  //         _isLoading = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       _error = "Connection failed. Check backend status.";
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
+
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'senior_curator': return Colors.red.shade700;
+      case 'curator': return Colors.blue.shade700;
+      case 'prediction': return Colors.purple.shade700;
+      default: return Colors.grey.shade600;
     }
   }
 
@@ -60,46 +170,56 @@ class _VerificationListPageState extends State<VerificationListPage> {
       backgroundColor: const Color(0xFFF7F9F5),
       appBar: AppBar(
         title: const Text(
-          'Verify Submissions',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3D5245)),
+            'Pending Verifications',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3D5245))
         ),
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 0.5,
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF3D5245)),
-            onPressed: _fetchSubmissions,
+              icon: const Icon(Icons.refresh, color: Color(0xFF3D5245)),
+              onPressed: _fetchSubmissions
           ),
         ],
       ),
-      body: _buildBody(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4CAF50)))
+          : _error != null
+          ? _buildErrorWidget()
+          : _buildList(),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF4CAF50)));
-    }
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+          const SizedBox(height: 16),
+          Text(_error!, style: const TextStyle(color: Colors.grey)),
+          TextButton(onPressed: _fetchSubmissions, child: const Text("Retry")),
+        ],
+      ),
+    );
+  }
 
-    if (_error != null) {
+  Widget _buildList() {
+    if (_submissions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off, size: 60, color: Colors.grey),
+            Icon(Icons.done_all_rounded, size: 64, color: Colors.green.withOpacity(0.5)),
             const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _fetchSubmissions, child: const Text("Retry")),
+            const Text(
+              "All caught up!",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+            ),
+            const Text("No pending submissions to verify."),
           ],
         ),
-      );
-    }
-
-    if (_submissions.isEmpty) {
-      return const Center(
-        child: Text("No user submissions found in history.", style: TextStyle(color: Colors.grey)),
       );
     }
 
@@ -108,347 +228,86 @@ class _VerificationListPageState extends State<VerificationListPage> {
       itemCount: _submissions.length,
       itemBuilder: (context, index) {
         final item = _submissions[index];
-
-        // Construct the full image URL dynamically using the imageId from DB
         final String imageUrl = "${Config.apiUrl}/history/image/${item['imageId']}";
+        final String role = item['uploader_role'] ?? 'unknown';
+        final Color roleColor = _getRoleColor(role);
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12.0),
+          elevation: 2,
+          shadowColor: Colors.black12,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 50,
-                height: 50,
+            leading: Hero(
+              tag: item['id'], // Smooth transition for the image
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   imageUrl,
+                  width: 50,
+                  height: 50,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.eco, color: Colors.green, size: 24),
-                  ),
+                  errorBuilder: (_, __, ___) => const Icon(Icons.eco, color: Colors.green),
                 ),
               ),
             ),
-            title: Text(
-              item['submittedName']?.toString() ?? 'Unknown Plant', // Null safety
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3D5245)),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    item['submittedName'] ?? 'Unknown',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3D5245)),
+                  ),
+                ),
+                _buildRoleBadge(role, roleColor),
+              ],
             ),
-            subtitle: Text(
-              'Match: ${item['score'] ?? "0%"} • ${item['date'] ?? "N/A"}',
-              style: const TextStyle(fontSize: 12),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                  'Source: ${item['type'] == 'prediction' ? "AI Prediction" : "Manual Upload"}\nDate: ${item['date']}',
+                  style: const TextStyle(fontSize: 12, height: 1.4)
+              ),
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-            onTap: () {
-              // Pass the item (including the constructed imageUrl) to the detail page
-              Navigator.push(
+            onTap: () async {
+              // Wait for the result from the detail page
+              final bool? refreshNeeded = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => VerificationDetailPage(
-                    submissionData: {
-                      ...item,
-                      'imageUrl': imageUrl, // Ensure detail page has the full URL
-                    },
+                    submissionData: {...item, 'imageUrl': imageUrl},
                   ),
                 ),
-              ).then((_) => _fetchSubmissions()); // Refresh list when returning
+              );
+
+              // If refreshNeeded is true, it means a plant was successfully verified
+              if (refreshNeeded == true) {
+                _fetchSubmissions();
+              }
             },
           ),
         );
       },
     );
   }
+
+  Widget _buildRoleBadge(String role, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        role.toUpperCase().replaceAll('_', ' '),
+        style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: color),
+      ),
+    );
+  }
 }
 
 
-// import 'package:flutter/material.dart';
-// import 'verification_details.dart';
-//
-// class VerificationListPage extends StatelessWidget {
-//   const VerificationListPage({super.key});
-//
-//   // --- UPDATED DUMMY DATA WITH DYNAMIC SUGGESTIONS FOR EACH PLANT ---
-//   final List<Map<String, dynamic>> submissions = const [
-//     {
-//       'id': '201',
-//       'submittedName': 'Matucana Krahnii',
-//       'date': '2025-10-30',
-//       'imageUrl': 'https://res.cloudinary.com/dyi7dglot/image/upload/v1761972424/vlifmmki5gx6hojqbxpt.jpg',
-//     },
-//     {
-//       'id': '202',
-//       'submittedName': 'Eschscholzia',
-//       'date': '2025-10-29',
-//       'imageUrl': 'https://res.cloudinary.com/dyi7dglot/image/upload/v1770437045/n5wtcraeizlxcgcqoquv.jpg',
-//     },
-//     {
-//       'id': '203',
-//       'submittedName': 'Scutellaria',
-//       'date': '2025-10-28',
-//       'imageUrl': 'https://res.cloudinary.com/dyi7dglot/image/upload/v1770133237/yiecqa1gg3ru9jdvxiel.jpg',
-//     },
-//   ];
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Verify Submissions'),
-//       ),
-//       body: ListView.builder(
-//         padding: const EdgeInsets.all(16.0),
-//         itemCount: submissions.length,
-//         itemBuilder: (context, index) {
-//           final submission = submissions[index];
-//           return Padding(
-//             padding: const EdgeInsets.only(bottom: 12.0),
-//             child: Card(
-//               child: ListTile(
-//                 contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-//                 leading: ClipOval(
-//                   child: SizedBox.fromSize(
-//                     size: const Size.fromRadius(25), // Image radius
-//                     child: Image.network(
-//                       submission['imageUrl'],
-//                       fit: BoxFit.cover,
-//                       loadingBuilder: (context, child, loadingProgress) {
-//                         if (loadingProgress == null) return child;
-//                         return const Center(child: CircularProgressIndicator());
-//                       },
-//                       errorBuilder: (context, error, stackTrace) {
-//                         debugPrint('Image failed to load for ${submission['submittedName']}: $error');
-//                         return Container(
-//                           color: Colors.grey.shade200,
-//                           child: const Icon(Icons.eco, color: Colors.green, size: 30),
-//                         );
-//                       },
-//                     ),
-//                   ),
-//                 ),
-//                 title: Text(
-//                   submission['submittedName'],
-//                   style: const TextStyle(fontWeight: FontWeight.bold),
-//                 ),
-//                 subtitle: Text('Submitted on: ${submission['date']}'),
-//                 trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-//                 onTap: () {
-//                   // The entire submission map (including suggestions) is passed here
-//                   Navigator.push(
-//                     context,
-//                     MaterialPageRoute(
-//                       builder: (context) => VerificationDetailPage(submissionData: submission),
-//                     ),
-//                   );
-//                 },
-//               ),
-//             ),
-//           );
-//         },
-//       ),
-//     );
-//   }
-// }
-//
-//
-//
-// ///OLD CODE WITH SAME IMAGES
-// // import 'package:flutter/material.dart';
-// // import 'verification_details.dart'; // Make sure this file exists in your project
-// //
-// // class VerificationListPage extends StatelessWidget {
-// //   const VerificationListPage({super.key});
-// //
-// //   // --- FIXED DUMMY DATA WITH WORKING IMAGE URLS ---
-// //   // Using placeholder images from reliable sources that work without special headers
-// //   final List<Map<String, dynamic>> submissions = const [
-// //     {
-// //       'id': '201',
-// //       'submittedName': 'Matucana Krahnii',
-// //       'date': '2025-10-30',
-// //       'score': '25%',
-// //       // Using a reliable placeholder - replace with your own hosted images or stable URLs
-// //       'imageUrl': 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Matucana_krahnii.JPG',
-// //     },
-// //     {
-// //       'id': '202',
-// //       'submittedName': 'Eschscholzia',
-// //       'date': '2025-10-29',
-// //       'score': '41%',
-// //       'imageUrl': 'https://as1.ftcdn.net/v2/jpg/14/47/93/76/1000_F_1447937685_JpwbqJl3p7V6L5IDf87PFbxuP8OD0STM.jpg',
-// //     },
-// //     {
-// //       'id': '203',
-// //       'submittedName': 'Scutellaria',
-// //       'date': '2025-10-28',
-// //       'score': '85%',
-// //       'imageUrl': 'https://as2.ftcdn.net/v2/jpg/15/75/02/71/1000_F_1575027124_juV9JLgb5hMA6WeeAFaPn9MQRDC1zzJQ.jpg',
-// //     },
-// //     {
-// //       'id': '204',
-// //       'submittedName': 'Cannabaceae',
-// //       'date': '2025-10-27',
-// //       'score': '91%',
-// //       'imageUrl': 'https://plus.unsplash.com/premium_photo-1669687380166-bc9d3c806955?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
-// //     }
-// //   ];
-// //
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Scaffold(
-// //       appBar: AppBar(
-// //         title: const Text('Verify Submissions'),
-// //       ),
-// //       body: ListView.builder(
-// //         padding: const EdgeInsets.all(16.0),
-// //         itemCount: submissions.length,
-// //         itemBuilder: (context, index) {
-// //           final submission = submissions[index];
-// //           return Padding(
-// //             padding: const EdgeInsets.only(bottom: 12.0),
-// //             child: Card(
-// //               child: ListTile(
-// //                 contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-// //                 leading: ClipOval(
-// //                   child: SizedBox.fromSize(
-// //                     size: const Size.fromRadius(25), // Image radius
-// //                     child: Image.network(
-// //                       submission['imageUrl'],
-// //                       fit: BoxFit.cover,
-// //                       loadingBuilder: (context, child, loadingProgress) {
-// //                         if (loadingProgress == null) return child;
-// //                         return const Center(child: CircularProgressIndicator());
-// //                       },
-// //                       errorBuilder: (context, error, stackTrace) {
-// //                         debugPrint('Image failed to load for ${submission['submittedName']}: $error');
-// //                         return Container(
-// //                           color: Colors.grey.shade200,
-// //                           child: const Icon(Icons.eco, color: Colors.green, size: 30),
-// //                         );
-// //                       },
-// //                     ),
-// //                   ),
-// //                 ),
-// //                 title: Text(
-// //                   submission['submittedName'],
-// //                   style: const TextStyle(fontWeight: FontWeight.bold),
-// //                 ),
-// //                 subtitle: Text('Submitted on: ${submission['date']}'),
-// //                 trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-// //                 onTap: () {
-// //                   // Navigate to the detail page on tap.
-// //                   Navigator.push(
-// //                     context,
-// //                     MaterialPageRoute(
-// //                       builder: (context) => VerificationDetailPage(submissionData: submission),
-// //                     ),
-// //                   );
-// //                 },
-// //               ),
-// //             ),
-// //           );
-// //         },
-// //       ),
-// //     );
-// //   }
-// // }
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-// ///OLD CODE
-// // import 'package:flutter/material.dart';
-// // import 'verification_details.dart'; // Import the detail page
-// //
-// // class VerificationListPage extends StatelessWidget {
-// //   const VerificationListPage({super.key});
-// //
-// //   // --- DUMMY DATA FOR THE SUBMISSION LIST ---
-// //   // This list creates the entries that appear on the page.
-// //   final List<Map<String, dynamic>> submissions = const [
-// //     {
-// //       'id': '101',
-// //       'submittedName': 'Tulsi',
-// //       'date': '2025-10-17',
-// //       'score': '92%',
-// //       'imageUrl': 'https://plus.unsplash.com/premium_photo-1671070369255-a459b1a85a4a?q=80&w=2071&auto=format&fit=crop',
-// //     },
-// //     {
-// //       'id': '102',
-// //       'submittedName': 'Unknown Leaf',
-// //       'date': '2025-10-16',
-// //       'score': '88%',
-// //       'imageUrl': 'https://images.unsplash.com/photo-1629828328229-37a5e0108502?q=80&w=2070&auto=format&fit=crop',
-// //     },
-// //     {
-// //       'id': '103',
-// //       'submittedName': 'Ashwagandha?',
-// //       'date': '2025-10-16',
-// //       'score': '76%',
-// //       'imageUrl': 'https://images.unsplash.com/photo-1595152772236-4b8156157154?q=80&w=1974&auto=format&fit=crop',
-// //     },
-// //     {
-// //       'id': '104',
-// //       'submittedName': 'Mint Leaf',
-// //       'date': '2025-10-15',
-// //       'score': '95%',
-// //       'imageUrl': 'https://images.unsplash.com/photo-1620075436900-a8865646f901?q=80&w=2070&auto=format&fit=crop',
-// //     }
-// //   ];
-// //
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Scaffold(
-// //       appBar: AppBar(
-// //         title: const Text('Verify Submissions'),
-// //       ),
-// //       body: ListView.builder(
-// //         // Use padding on the ListView for better spacing
-// //         padding: const EdgeInsets.all(16.0),
-// //         itemCount: submissions.length,
-// //         itemBuilder: (context, index) {
-// //           final submission = submissions[index];
-// //           // Use Padding for spacing between cards
-// //           return Padding(
-// //             padding: const EdgeInsets.only(bottom: 12.0),
-// //             child: Card( // This card uses the global theme from main.dart
-// //               child: ListTile(
-// //                 contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-// //                 leading: CircleAvatar(
-// //                   backgroundImage: NetworkImage(submission['imageUrl']),
-// //                   radius: 25,
-// //                 ),
-// //                 title: Text(
-// //                   submission['submittedName'],
-// //                   style: const TextStyle(fontWeight: FontWeight.bold),
-// //                 ),
-// //                 subtitle: Text('Submitted on: ${submission['date']}'),
-// //                 trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-// //                 onTap: () {
-// //                   // Navigate to the detail page, passing the selected submission's data
-// //                   Navigator.push(
-// //                     context,
-// //                     MaterialPageRoute(
-// //                       builder: (context) => VerificationDetailPage(submissionData: submission),
-// //                     ),
-// //                   );
-// //                 },
-// //               ),
-// //             ),
-// //           );
-// //         },
-// //       ),
-// //     );
-// //   }
-// // }

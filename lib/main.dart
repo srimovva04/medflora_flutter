@@ -15,11 +15,11 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) {
         final auth = AuthProvider();
-        auth.tryAutoLogin();   // ✅ call here
+        auth.tryAutoLogin();
         return auth;
       },
       child: MaterialApp(
-        title: 'MedFlora',
+        title: 'FloraMediX',
         theme: _buildAppTheme(),
         debugShowCheckedModeBanner: false,
         home: const RoleSelectionPage(),
