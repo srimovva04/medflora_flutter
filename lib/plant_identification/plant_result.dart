@@ -267,24 +267,24 @@ class PlantResultView extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildDetailCard(Icons.account_tree_outlined, "Kingdom", kingdom),
                   const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          // Replace this with your actual Gallery/Grid page
-                          builder: (context) => const BrowseImagesPage(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      "Browse Images",
-                      style: TextStyle(
-                        fontSize: 16,
-                        decoration: TextDecoration.underline, // Optional: adds underline
-                      ),
-                    ),
-                  ),
+                  // TextButton(
+                  //   onPressed: () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         // Replace this with your actual Gallery/Grid page
+                  //         builder: (context) => const BrowseImagesPage(),
+                  //       ),
+                  //     );
+                  //   },
+                  //   child: const Text(
+                  //     "Browse Images",
+                  //     style: TextStyle(
+                  //       fontSize: 16,
+                  //       decoration: TextDecoration.underline, // Optional: adds underline
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
 
@@ -369,26 +369,26 @@ class PlantResultView extends StatelessWidget {
                   const Divider(),
                   _buildDetailRowSimple(Icons.account_tree, "Kingdom", kingdom),
                   const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          // Replace this with your actual Gallery/Grid page
-                          builder: (context) => const BrowseImagesPage(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      "Browse Images",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF388E3C), // This matches your "View Full Details" button color
-                        decoration: TextDecoration.underline,
-                        decorationColor: Color(0xFF388E3C), // Optional: makes the underline match the text color
-                      ),
-                    ),
-                  ),
+                  // TextButton(
+                  //   onPressed: () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         // Replace this with your actual Gallery/Grid page
+                  //         builder: (context) => const BrowseImagesPage(),
+                  //       ),
+                  //     );
+                  //   },
+                  //   child: const Text(
+                  //     "Browse Images",
+                  //     style: TextStyle(
+                  //       fontSize: 16,
+                  //       color: Color(0xFF388E3C), // This matches your "View Full Details" button color
+                  //       decoration: TextDecoration.underline,
+                  //       decorationColor: Color(0xFF388E3C), // Optional: makes the underline match the text color
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 10),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(

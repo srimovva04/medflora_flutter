@@ -154,6 +154,7 @@ class _AuthScreenState extends State<AuthScreen> {
             const SizedBox(height: 10),
             if (_authMode == AuthMode.signup) ...[
               TextFormField(
+                key: const ValueKey('phone'),
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
                   prefixIcon: Icon(Icons.phone, color: primaryColor),
@@ -166,6 +167,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 10),
             ],
             TextFormField(
+              key: const ValueKey('password'),
               decoration: InputDecoration(
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock_outline, color: primaryColor),

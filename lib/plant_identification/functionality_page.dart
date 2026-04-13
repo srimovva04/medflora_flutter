@@ -231,7 +231,6 @@ class FunctionalityPageState extends State<FunctionalityPage> {
 
       debugPrint("Response status: ${response.statusCode}");
       debugPrint("Response body: ${response.body}");
-      debugPrint("TOKEN USED = ${token}");
 
 
       if (response.statusCode == 200) {

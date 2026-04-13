@@ -9,7 +9,7 @@ class PlantDataService {
   // Fetch all states with plant count
   static Future<List<Map<String, dynamic>>> loadAllStates() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/states'));
+      final response = await http.get(Uri.parse('$baseUrl/api/states'));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
